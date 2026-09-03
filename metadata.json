@@ -1,0 +1,6 @@
+{
+  "name": "Into Nepal",
+  "description": "Two-sided travel marketplace where international travelers book verified treks and tours from licensed Nepali travel agencies.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
