@@ -76,6 +76,12 @@ All migrations are stored under `/supabase/migrations/` and follow a strict nume
      - Explicit policies for travelers, verified agencies, and administrators
      - Strict isolation of payouts, bank secrets, bookings, and audit records
 
+10. **`010_fix_is_admin_security.sql`**
+    - **Dependencies**: `001_initial_types_and_helpers.sql`
+    - **Contents**:
+      - Restricts `public.is_admin()` to read role claims strictly from server-managed `app_metadata` and `service_role`.
+      - Removes vulnerable `user_metadata` checks to eliminate client privilege escalation risks.
+
 ---
 
 ## Execution Instructions

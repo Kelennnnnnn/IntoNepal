@@ -59,17 +59,3 @@ AS $$
   );
 $$;
 
--- 5. Helper function to check if current user is an approved agency
-CREATE OR REPLACE FUNCTION public.is_verified_agency(p_user_id UUID)
-RETURNS BOOLEAN
-LANGUAGE sql
-STABLE
-SECURITY DEFINER
-SET search_path = public
-AS $$
-  SELECT EXISTS (
-    SELECT 1 FROM public.agency_applications
-    WHERE user_id = p_user_id
-      AND status = 'verified'
-  );
-$$;

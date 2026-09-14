@@ -31,6 +31,21 @@ CREATE TABLE IF NOT EXISTS public.agency_applications (
 
 COMMENT ON TABLE public.agency_applications IS 'Registered Nepali travel agencies, licensing credentials, and verification state.';
 
+-- Helper function to check if current user is an approved agency
+CREATE OR REPLACE FUNCTION public.is_verified_agency(p_user_id UUID)
+RETURNS BOOLEAN
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.agency_applications
+    WHERE user_id = p_user_id
+      AND status = 'verified'
+  );
+$$;
+
 -- 2. listings — trips and itineraries
 CREATE TABLE IF NOT EXISTS public.listings (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
