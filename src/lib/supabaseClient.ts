@@ -1,63 +1,21 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from '../types/database.types';
 
-// Default to user's active Supabase project
-const DEFAULT_SUPABASE_URL = 'https://cnrajashdiemnezxuxbl.supabase.co';
-const DEFAULT_SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNucmFqYXNoZGllbW5lenh1eGJsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkzMTk2NjgsImV4cCI6MjEwNDg5NTY2OH0.iJgKTDe4JN5WwJAdCU9_kVORi10dKEu_MnLquEgl__Q';
+export const supabaseUrl =
+  import.meta.env.VITE_SUPABASE_URL || 'https://cnrajashdiemnezxuxbl.supabase.co';
+export const supabaseAnonKey =
+  (import.meta.env.VITE_SUPABASE_ANON_KEY || '').trim() ||
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNucmFqYXNoZGllbW5lenh1eGJsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkzMTk2NjgsImV4cCI6MjEwNDg5NTY2OH0.iJgKTDe4JN5WwJAdCU9_kVORi10dKEu_MnLquEgl__Q';
 
-export function getActiveSupabaseUrl(): string {
-  if (typeof window !== 'undefined') {
-    const custom = localStorage.getItem('supabase_project_url');
-    if (custom) return custom;
-  }
-  const envUrl = (import.meta as any).env?.VITE_SUPABASE_URL;
-  // If envUrl is set and is NOT the old deleted project or placeholder, use it
-  if (envUrl && !envUrl.includes('piowwxrbluaxtppouqvf') && !envUrl.includes('your-project-id')) {
-    return envUrl;
-  }
-  return DEFAULT_SUPABASE_URL;
+if (!supabaseUrl) {
+  console.warn('Missing environment variable: VITE_SUPABASE_URL');
 }
 
-export function getActiveSupabaseAnonKey(): string {
-  if (typeof window !== 'undefined') {
-    const custom = localStorage.getItem('supabase_project_anon_key');
-    if (custom) return custom;
-  }
-  const envUrl = (import.meta as any).env?.VITE_SUPABASE_URL;
-  const envKey = (import.meta as any).env?.VITE_SUPABASE_ANON_KEY;
-  if (envKey && envUrl && !envUrl.includes('piowwxrbluaxtppouqvf') && !envKey.includes('your-supabase-anon-key')) {
-    return envKey;
-  }
-  return DEFAULT_SUPABASE_ANON_KEY;
+if (!supabaseAnonKey) {
+  console.warn('Missing environment variable: VITE_SUPABASE_ANON_KEY');
 }
 
-export const supabaseUrl: string = getActiveSupabaseUrl();
-export const supabaseAnonKey: string = getActiveSupabaseAnonKey();
-
-// Save custom credentials if configured via UI
-export function setCustomSupabaseCredentials(url: string, key: string) {
-  if (typeof window !== 'undefined') {
-    localStorage.setItem('supabase_project_url', url.trim());
-    localStorage.setItem('supabase_project_anon_key', key.trim());
-    window.location.reload();
-  }
-}
-
-export function resetSupabaseCredentials() {
-  if (typeof window !== 'undefined') {
-    localStorage.removeItem('supabase_project_url');
-    localStorage.removeItem('supabase_project_anon_key');
-    window.location.reload();
-  }
-}
-
-// Check if configured
-export const isSupabaseConfigured: boolean = Boolean(
-  supabaseUrl &&
-  supabaseAnonKey &&
-  supabaseUrl !== 'https://your-project-id.supabase.co' &&
-  supabaseAnonKey !== 'your-supabase-anon-key'
-);
+export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey);
 
 /**
  * Single instance of the typed Supabase client
