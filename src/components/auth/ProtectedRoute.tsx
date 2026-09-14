@@ -32,9 +32,15 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     );
   }
 
-  // Not authenticated → redirect to loginPathForPortal(), remembering attempted path
+  // Not authenticated → redirect to appropriate login path, remembering attempted path
   if (!isAuthenticated || !user) {
-    const loginPath = loginPathForPortal();
+    const isAttemptingAdmin = location.pathname.startsWith('/admin');
+    const isAttemptingPartner = location.pathname.startsWith('/agency');
+    const loginPath = isAttemptingAdmin
+      ? '/admin/login'
+      : isAttemptingPartner
+      ? '/agency/login'
+      : loginPathForPortal();
     return (
       <Navigate
         to={loginPath}

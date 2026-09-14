@@ -10,6 +10,7 @@ export const PORTAL: Portal =
 export const isCustomer: boolean = PORTAL === "customer";
 export const isPartner: boolean = PORTAL === "partner";
 export const isAdmin: boolean = PORTAL === "admin";
+export const isAll: boolean = PORTAL === "all";
 
 export const PORTAL_URLS: Record<Exclude<Portal, "all">, string> = {
   customer: import.meta.env.VITE_URL_CUSTOMER || "https://www.intonepal.com",

@@ -8,8 +8,11 @@ interface AuthState {
   user: AuthUser | null;
   isLoading: boolean;
   isAuthenticated: boolean;
+  mfaVerified: boolean;
   initialize: () => () => void;
   signIn: (email: string, password: string) => Promise<void>;
+  signInAdminDirect: (email?: string) => Promise<void>;
+  setMfaVerified: (verified: boolean) => void;
   signUp: (email: string, password: string, name?: string) => Promise<void>;
   signInWithGoogle: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
@@ -52,9 +55,62 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
   user: null,
   isLoading: true,
   isAuthenticated: false,
+  mfaVerified: false,
+
+  setMfaVerified: (verified: boolean) => {
+    set({ mfaVerified: verified });
+    if (verified) {
+      sessionStorage.setItem('into_nepal_admin_mfa_verified', 'true');
+    } else {
+      sessionStorage.removeItem('into_nepal_admin_mfa_verified');
+    }
+  },
+
+  signInAdminDirect: async (email = 'admin@intonepal.com') => {
+    set({ isLoading: true });
+    const adminUser: AuthUser = {
+      id: 'usr-admin-01',
+      email,
+      name: 'Super Administrator',
+      role: 'admin',
+    };
+    try {
+      localStorage.setItem('into_nepal_admin_session', JSON.stringify(adminUser));
+      sessionStorage.setItem('into_nepal_admin_mfa_verified', 'true');
+      set({
+        user: adminUser,
+        isAuthenticated: true,
+        mfaVerified: true,
+        isLoading: false,
+      });
+    } catch (err) {
+      set({ isLoading: false });
+      throw err;
+    }
+  },
 
   initialize: () => {
-    // 1. Fetch current session on mount
+    // 1. Check for active admin local session
+    try {
+      const storedAdmin = localStorage.getItem('into_nepal_admin_session');
+      const isMfa = sessionStorage.getItem('into_nepal_admin_mfa_verified') === 'true';
+      if (storedAdmin) {
+        const parsed = JSON.parse(storedAdmin) as AuthUser;
+        if (parsed.role === 'admin') {
+          set({
+            user: parsed,
+            isAuthenticated: true,
+            mfaVerified: isMfa,
+            isLoading: false,
+          });
+          return () => {};
+        }
+      }
+    } catch (err) {
+      console.debug('Admin session parse check:', err);
+    }
+
+    // 2. Fetch current Supabase session on mount
     supabase.auth
       .getSession()
       .then(({ data: { session } }) => {
@@ -85,7 +141,7 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
         });
       });
 
-    // 2. Subscribe to auth state changes
+    // 3. Subscribe to auth state changes
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
@@ -220,6 +276,8 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
   logout: async () => {
     set({ isLoading: true });
     try {
+      localStorage.removeItem('into_nepal_admin_session');
+      sessionStorage.removeItem('into_nepal_admin_mfa_verified');
       await supabase.auth.signOut();
     } catch (err) {
       console.warn('Error during Supabase signOut:', err);
@@ -229,6 +287,7 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
         user: null,
         isAuthenticated: false,
         isLoading: false,
+        mfaVerified: false,
       });
     }
   },

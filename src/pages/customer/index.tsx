@@ -1,8 +1,8 @@
 import { createPlaceholderPage } from '../PlaceholderPage';
 
 // Public customer pages
-export const HomePage = createPlaceholderPage('HomePage', 'Customer Portal');
-export const ActivitiesPage = createPlaceholderPage('ActivitiesPage', 'Customer Portal');
+export { HomePage } from './HomePage';
+export { ActivitiesPage } from './ActivitiesPage';
 export const ActivityDetailPage = createPlaceholderPage('ActivityDetailPage', 'Customer Portal');
 export const AgencyProfilePage = createPlaceholderPage('AgencyProfilePage', 'Customer Portal');
 export const AboutPage = createPlaceholderPage('AboutPage', 'Customer Portal');
