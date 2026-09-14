@@ -42,7 +42,8 @@ END;
 $$;
 
 -- 4. Role & Admin verification function
--- Checks JWT claims (custom claim, app_metadata, or user_metadata)
+-- Checks app_metadata ONLY. user_metadata is client-writable via
+-- supabase.auth.updateUser() and must never be trusted for authorization.
 CREATE OR REPLACE FUNCTION public.is_admin()
 RETURNS BOOLEAN
 LANGUAGE sql
@@ -50,12 +51,6 @@ STABLE
 SECURITY DEFINER
 SET search_path = public
 AS $$
-  SELECT COALESCE(
-    (auth.jwt() ->> 'role') = 'admin' OR
-    (auth.jwt() -> 'app_metadata' ->> 'role') = 'admin' OR
-    (auth.jwt() -> 'user_metadata' ->> 'role') = 'admin' OR
-    (auth.jwt() -> 'user_metadata' ->> 'is_admin')::boolean = true,
-    false
-  );
+  SELECT COALESCE((auth.jwt() -> 'app_metadata' ->> 'role') = 'admin', false);
 $$;
 
