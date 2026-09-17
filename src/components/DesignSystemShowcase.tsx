@@ -10,6 +10,10 @@ import {
   Badge,
   ReviewScoreChip,
   LevelBadge,
+  CategoryBadge,
+  TrustBadge,
+  ListingCard,
+  type ListingCardData,
   Input,
   Select,
   Textarea,
@@ -81,6 +85,88 @@ export const DesignSystemShowcase: React.FC = () => {
   const [activeChip, setActiveChip] = useState('All');
   const [inputText, setInputText] = useState('Everest Base Camp');
   const [selectedRegion, setSelectedRegion] = useState('khumbu');
+  const [wishlist, setWishlist] = useState<Record<string, boolean>>({
+    'sample-ebc': true,
+  });
+
+  const handleWishlistToggle = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setWishlist((prev) => {
+      const next = !prev[id];
+      toast(next ? 'Saved to your wishlist' : 'Removed from wishlist', {
+        description: 'Syncs across your session in real time.',
+      });
+      return { ...prev, [id]: next };
+    });
+  };
+
+  const sampleOtaListings: ListingCardData[] = [
+    {
+      id: 'sample-ebc',
+      title: 'Everest Base Camp & Kala Patthar Helicopter Return',
+      category: 'Trekking',
+      location: 'Khumbu, Sagarmatha',
+      duration: '12 Days',
+      price: 1850,
+      difficulty: 'Challenging',
+      rating: 4.9,
+      reviewCount: 128,
+      imageUrl: 'https://images.unsplash.com/photo-1544735716-392fe2489ffa?auto=format&fit=crop&w=800&q=80',
+      verifiedAgency: true,
+      agencyName: 'Himalayan Sherpa Treks',
+      freeCancellation: true,
+      spotsRemaining: 3,
+      featured: true,
+    },
+    {
+      id: 'sample-rafting',
+      title: 'Trishuli & Kali Gandaki White Water Rafting Expedition',
+      category: 'Rafting',
+      location: 'Pokhara Valley',
+      duration: '3 Days',
+      price: 380,
+      difficulty: 'Moderate',
+      rating: 4.8,
+      reviewCount: 46,
+      imageUrl: 'https://images.unsplash.com/photo-1530866495561-507c9faab2ed?auto=format&fit=crop&w=800&q=80',
+      verifiedAgency: true,
+      agencyName: 'Pokhara River Guides',
+      freeCancellation: true,
+      spotsRemaining: 5,
+    },
+    {
+      id: 'sample-wildlife',
+      title: 'Chitwan National Park Bengal Tiger & One-Horned Rhino Safari',
+      category: 'Wildlife',
+      location: 'Chitwan Lowlands',
+      duration: '4 Days',
+      price: 520,
+      difficulty: 'Easy',
+      rating: 4.7,
+      reviewCount: 82,
+      imageUrl: 'https://images.unsplash.com/photo-1534177616072-ef7dc120449d?auto=format&fit=crop&w=800&q=80',
+      verifiedAgency: true,
+      agencyName: 'Terai Wildlife Safaris',
+      freeCancellation: true,
+      spotsRemaining: 8,
+    },
+    {
+      id: 'sample-cultural',
+      title: 'Kathmandu Valley UNESCO World Heritage & Living Goddess Tour',
+      category: 'Cultural',
+      location: 'Kathmandu & Bhaktapur',
+      duration: '2 Days',
+      price: 210,
+      difficulty: 'Easy',
+      rating: null,
+      reviewCount: 0,
+      imageUrl: 'https://images.unsplash.com/photo-1526778548025-fa2f459cd5c1?auto=format&fit=crop&w=800&q=80',
+      verifiedAgency: true,
+      agencyName: 'Heritage Nepal Tours',
+      freeCancellation: true,
+      spotsRemaining: 4,
+    },
+  ];
 
   const filterChips = [
     'All',
@@ -578,6 +664,86 @@ export const DesignSystemShowcase: React.FC = () => {
                   </div>
                 </div>
               </div>
+            </div>
+          </div>
+        </section>
+
+        {/* =========================================================================
+            SECTION 5B: OTA DENSITY CARDS, 8 CATEGORIES & TRUST LAYER
+           ========================================================================= */}
+        <section>
+          <div className="border-b border-[#E8E4DD] pb-3 mb-6">
+            <h2 className="font-serif text-2xl font-bold text-[#1A1F1D]">
+              5B. OTA Information Density & Product Categories
+            </h2>
+            <p className="text-xs sm:text-sm text-[#5F6B66] mt-1">
+              Commercial density makes a white marketplace feel alive. All 8 categories are treated equally. Cards carry image, category tag, title, location, duration, bold amber price, review score chip, wishlist heart, and badges.
+            </p>
+          </div>
+
+          {/* 8 Product Categories Grid */}
+          <div className="mb-8">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-[#5F6B66] mb-3">
+              All 8 Product Categories (Equal Marketplace Footing)
+            </h3>
+            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2.5">
+              {[
+                'Trekking',
+                'Adventure',
+                'Cultural',
+                'Wildlife',
+                'Rafting',
+                'Mountaineering',
+                'Wellness',
+                'Photography',
+              ].map((cat) => (
+                <div
+                  key={cat}
+                  className="flex flex-col items-center justify-center p-3 rounded-lg border border-[#E8E4DD] bg-[#FFFFFF] hover:border-[#D97706] transition-colors text-center gap-1.5"
+                >
+                  <CategoryBadge category={cat} size="sm" />
+                  <span className="text-[10px] text-[#8E9994]">40+ Trips</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Trust Layer Strip */}
+          <div className="mb-8 p-4 rounded-lg bg-[#FBF8F3] border border-[#E8E4DD]">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-[#5F6B66] mb-3">
+              The Platform Trust Layer (The Product is Trust)
+            </h3>
+            <div className="flex flex-wrap items-center gap-3">
+              <TrustBadge variant="verified" />
+              <TrustBadge variant="escrow" />
+              <TrustBadge variant="reviews" />
+              <TrustBadge variant="commission" />
+            </div>
+          </div>
+
+          {/* Live OTA Listing Cards in Grid */}
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-[#5F6B66]">
+                High-Density Listing Cards (Matte Finish: 1px border, 0 shadow at rest, +3px hover lift)
+              </h3>
+              <span className="text-xs text-[#8E9994]">Showing 4 multi-category listings</span>
+            </div>
+
+            <div className="grid-wide">
+              {sampleOtaListings.map((listing) => (
+                <ListingCard
+                  key={listing.id}
+                  listing={listing}
+                  isWishlisted={!!wishlist[listing.id]}
+                  onWishlistToggle={handleWishlistToggle}
+                  onClick={(id) => {
+                    toast.info(`Clicked listing card ${id}`, {
+                      description: 'Navigates to the activity detail page.',
+                    });
+                  }}
+                />
+              ))}
             </div>
           </div>
         </section>

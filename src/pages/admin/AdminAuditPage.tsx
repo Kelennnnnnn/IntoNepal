@@ -13,6 +13,7 @@ import {
   ChevronRight,
   Code,
   X,
+  AlertTriangle,
 } from 'lucide-react';
 import { AdminLayout } from '../../components/layout/AdminLayout';
 import { fetchAllAuditLogs } from '../../lib/audit';
@@ -22,16 +23,19 @@ import { toast } from 'sonner';
 export const AdminAuditPage: React.FC = () => {
   const [logs, setLogs] = useState<AuditLogEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [actionFilter, setActionFilter] = useState('all');
   const [selectedEntry, setSelectedEntry] = useState<AuditLogEntry | null>(null);
 
   const loadData = async () => {
     setLoading(true);
+    setErrorMessage(null);
     try {
       const data = await fetchAllAuditLogs();
       setLogs(data);
     } catch (err: any) {
+      setErrorMessage(err.message || 'Failed to load audit logs');
       toast.error('Failed to load audit logs: ' + err.message);
     } finally {
       setLoading(false);
@@ -49,11 +53,11 @@ export const AdminAuditPage: React.FC = () => {
     const q = searchQuery.toLowerCase().trim();
     const matchesSearch =
       !q ||
-      l.action.toLowerCase().includes(q) ||
-      l.entity_type.toLowerCase().includes(q) ||
-      l.entity_id.toLowerCase().includes(q) ||
-      (l.actor_user_id && l.actor_user_id.toLowerCase().includes(q)) ||
-      JSON.stringify(l.details).toLowerCase().includes(q);
+      (l.action || '').toLowerCase().includes(q) ||
+      (l.entity_type || '').toLowerCase().includes(q) ||
+      (l.entity_id || '').toLowerCase().includes(q) ||
+      (l.actor_user_id || '').toLowerCase().includes(q) ||
+      (l.details ? JSON.stringify(l.details).toLowerCase().includes(q) : false);
 
     return matchesAction && matchesSearch;
   });
@@ -65,13 +69,27 @@ export const AdminAuditPage: React.FC = () => {
       actions={
         <button
           onClick={loadData}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-md border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 shadow-2xs transition-colors"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-md border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 shadow-2xs transition-colors cursor-pointer"
         >
           <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
           Refresh
         </button>
       }
     >
+      {errorMessage && (
+        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl flex items-center justify-between text-xs text-red-800">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 text-red-600 shrink-0" />
+            <span>{errorMessage}</span>
+          </div>
+          <button
+            onClick={loadData}
+            className="px-3 py-1 bg-red-600 text-white rounded font-semibold hover:bg-red-700 transition-colors cursor-pointer"
+          >
+            Retry
+          </button>
+        </div>
+      )}
       {/* FILTER & SEARCH */}
       <div className="bg-white rounded-xl border border-slate-200 p-4 mb-6 shadow-2xs flex flex-col sm:flex-row items-center justify-between gap-3">
         <div className="flex items-center gap-2 w-full sm:w-auto">
@@ -185,7 +203,7 @@ export const AdminAuditPage: React.FC = () => {
 
       {/* DIFF INSPECTOR MODAL */}
       {selectedEntry && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60">
           <div className="bg-white rounded-xl max-w-xl w-full border border-slate-200 shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
             <div className="px-5 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
               <div>

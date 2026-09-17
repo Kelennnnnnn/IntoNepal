@@ -1,3 +1,6 @@
+import type { Currency, BalancePaymentMethod } from '../domain';
+export * from '../domain';
+
 export type Role = 'user' | 'agency' | 'admin';
 
 export type Difficulty =
@@ -26,7 +29,7 @@ export type BookingStatus =
   | 'cancelled';
 export type PaymentStatus = 'unpaid' | 'paid' | 'refunded';
 export type PayoutStatus = 'pending' | 'processing' | 'completed' | 'failed';
-export type PayoutMethod = 'stripe' | 'manual';
+export type PayoutMethod = 'nic_asia_wire' | 'bank_wire' | 'manual' | 'stripe'; // 'stripe' deprecated legacy
 export type ContactStatus = 'new' | 'read' | 'replied';
 
 export interface AuthUser {
@@ -54,7 +57,9 @@ export interface Agency {
   insurance_doc_url: string | null;
   status: AgencyStatus;
   rejection_reason: string | null;
-  stripe_account_id: string | null;
+  payout_account_id?: string | null;
+  /** @deprecated Use payout_account_id or agency_bank_details */
+  stripe_account_id?: string | null;
   logo_url: string | null;
   rating: number;
   review_count: number;
@@ -125,10 +130,16 @@ export interface Booking {
   traveler_email: string;
   traveler_phone: string | null;
   price_per_person: number;
-  total_amount: number; // NOT NULL
-  commission_rate: number; // NOT NULL
-  commission_amount: number; // NOT NULL
-  net_payout: number; // NOT NULL
+  total_amount: number; // Product value ($100)
+  currency?: Currency;
+  booking_fee_rate?: number; // 0.15
+  booking_fee_amount?: number; // 15% ($15) Into Nepal reservation revenue
+  remaining_balance_amount?: number; // 85% ($85) Agency balance
+  balance_payment_method?: BalancePaymentMethod;
+  quote_id?: string | null;
+  commission_rate: number; // Backwards compatibility alias for booking_fee_rate
+  commission_amount: number; // Backwards compatibility alias for booking_fee_amount
+  net_payout: number; // Backwards compatibility alias for remaining_balance_amount
   status: BookingStatus;
   payment_status: PaymentStatus;
   payment_intent_id: string | null;
@@ -159,9 +170,12 @@ export interface Payout {
   id: string;
   agency_user_id: string;
   amount: number;
+  currency?: Currency;
   booking_ids: string[];
   status: PayoutStatus;
-  stripe_transfer_id: string | null;
+  transfer_reference?: string | null;
+  /** @deprecated Use transfer_reference */
+  stripe_transfer_id?: string | null;
   method: PayoutMethod;
   notes: string | null;
   created_at: string;

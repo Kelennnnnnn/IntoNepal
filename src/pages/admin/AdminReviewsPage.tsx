@@ -19,6 +19,7 @@ import { toast } from 'sonner';
 export const AdminReviewsPage: React.FC = () => {
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [visibilityFilter, setVisibilityFilter] = useState<'all' | 'visible' | 'hidden'>('all');
 
@@ -29,10 +30,12 @@ export const AdminReviewsPage: React.FC = () => {
 
   const loadData = async () => {
     setLoading(true);
+    setErrorMessage(null);
     try {
       const data = await fetchAdminReviews();
       setReviews(data);
     } catch (err: any) {
+      setErrorMessage(err.message || 'Failed to load reviews');
       toast.error('Failed to load reviews: ' + err.message);
     } finally {
       setLoading(false);
@@ -83,9 +86,9 @@ export const AdminReviewsPage: React.FC = () => {
     const q = searchQuery.toLowerCase().trim();
     const matchesSearch =
       !q ||
-      r.comment.toLowerCase().includes(q) ||
-      (r.traveler_name && r.traveler_name.toLowerCase().includes(q)) ||
-      r.id.toLowerCase().includes(q);
+      (r.comment || '').toLowerCase().includes(q) ||
+      (r.traveler_name || '').toLowerCase().includes(q) ||
+      (r.id || '').toLowerCase().includes(q);
 
     return matchesVis && matchesSearch;
   });
@@ -97,13 +100,27 @@ export const AdminReviewsPage: React.FC = () => {
       actions={
         <button
           onClick={loadData}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-md border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 shadow-2xs transition-colors"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-md border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 shadow-2xs transition-colors cursor-pointer"
         >
           <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
           Refresh
         </button>
       }
     >
+      {errorMessage && (
+        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl flex items-center justify-between text-xs text-red-800">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 text-red-600 shrink-0" />
+            <span>{errorMessage}</span>
+          </div>
+          <button
+            onClick={loadData}
+            className="px-3 py-1 bg-red-600 text-white rounded font-semibold hover:bg-red-700 transition-colors cursor-pointer"
+          >
+            Retry
+          </button>
+        </div>
+      )}
       {/* FILTER & SEARCH */}
       <div className="bg-white rounded-xl border border-slate-200 p-4 mb-6 shadow-2xs flex flex-col sm:flex-row items-center justify-between gap-3">
         <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-lg">
@@ -241,7 +258,7 @@ export const AdminReviewsPage: React.FC = () => {
 
       {/* MODERATION REASON MODAL */}
       {targetReview && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60">
           <div className="bg-white rounded-xl max-w-md w-full border border-slate-200 shadow-2xl p-6">
             <h3 className="text-sm font-bold text-slate-900 mb-1">
               {targetReview.hidden ? 'Restore Review to Public View' : 'Hide Review from Public Pages'}

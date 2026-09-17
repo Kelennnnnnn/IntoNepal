@@ -1,6 +1,8 @@
 import { supabase as rawSupabase } from './supabaseClient';
 import { logAdminAudit } from './audit';
 
+import { getStoredReviews } from '../data/reviewsAndDisputesData';
+
 // Cast supabase to any for admin tables/edge endpoints that extend beyond standard typed schema
 const supabase = rawSupabase as any;
 import type {
@@ -9,6 +11,7 @@ import type {
   Booking,
   Review,
   Payout,
+  PayoutMethod,
   ContactSubmission,
   PlatformSettings,
   Role,
@@ -326,9 +329,10 @@ export const INITIAL_PAYOUTS: Payout[] = [
     amount: 1734.00,
     booking_ids: ['bkg-9903-np'],
     status: 'completed',
-    stripe_transfer_id: 'tr_3SherpaPmt9091',
-    method: 'stripe',
-    notes: 'Direct Stripe Connect payout for completed Langtang expedition.',
+    transfer_reference: 'NIC_WIRE_2026_9091',
+    stripe_transfer_id: 'NIC_WIRE_2026_9091',
+    method: 'nic_asia_wire',
+    notes: 'Direct NIC ASIA settlement wire for completed Langtang expedition.',
     created_at: new Date(Date.now() - 3600000 * 120).toISOString(),
     completed_at: new Date(Date.now() - 3600000 * 118).toISOString(),
   },
@@ -338,6 +342,7 @@ export const INITIAL_PAYOUTS: Payout[] = [
     amount: 3200.00,
     booking_ids: ['bkg-old-manaslu'],
     status: 'completed',
+    transfer_reference: 'HBL-WIR-2026-9812',
     stripe_transfer_id: null,
     method: 'manual',
     notes: 'Himalayan Bank Ltd wire ref #HBL-WIR-2026-9812. Confirmed by accounting.',
@@ -350,9 +355,10 @@ export const INITIAL_PAYOUTS: Payout[] = [
     amount: 892.50,
     booking_ids: ['bkg-9902-np'],
     status: 'failed',
-    stripe_transfer_id: 'tr_err_PokharaFailed01',
-    method: 'stripe',
-    notes: 'Stripe webhook: Bank account restricted or unverified currency. Requires manual retry.',
+    transfer_reference: 'NIC_ERR_Pokhara01',
+    stripe_transfer_id: 'NIC_ERR_Pokhara01',
+    method: 'nic_asia_wire',
+    notes: 'Bank network response: Account clearance pending. Added to settlement retry queue.',
     created_at: new Date(Date.now() - 3600000 * 20).toISOString(),
     completed_at: null,
   },
@@ -896,7 +902,7 @@ export interface OutstandingAgencyPayout {
   email: string;
   unpaid_booking_count: number;
   amount_owed: number;
-  payout_method: 'stripe' | 'manual';
+  payout_method: PayoutMethod;
   bank_details?: {
     bank_name: string;
     swift_code: string;
@@ -1011,14 +1017,14 @@ export async function processPayout(params: {
   agencyUserId: string;
   amount: number;
   bookingIds: string[];
-  method: 'stripe' | 'manual';
+  method: PayoutMethod;
   notes?: string;
 }): Promise<Payout> {
   const payoutId = `pay-${Date.now()}`;
   const now = new Date().toISOString();
 
   // Call process-payout edge function
-  let transferId = `tr_${Date.now()}`;
+  let transferId = `wire_nic_${Date.now()}`;
   let payoutStatus: 'completed' | 'failed' = 'completed';
 
   try {
@@ -1034,7 +1040,7 @@ export async function processPayout(params: {
     if (fnError) {
       console.warn('process-payout edge function warning:', fnError.message);
       // If payment provider failed, mark as failed
-      if (fnError.message.includes('Stripe') || fnError.message.includes('balance')) {
+      if (fnError.message.includes('rejected') || fnError.message.includes('balance')) {
         payoutStatus = 'failed';
       }
     } else if (fnData && (fnData as any).transfer_id) {
@@ -1050,7 +1056,8 @@ export async function processPayout(params: {
     amount: params.amount,
     booking_ids: params.bookingIds,
     status: payoutStatus,
-    stripe_transfer_id: params.method === 'stripe' ? transferId : null,
+    transfer_reference: transferId,
+    stripe_transfer_id: transferId,
     method: params.method,
     notes: params.notes || `Disbursement of $${params.amount.toFixed(2)} via ${params.method}.`,
     created_at: now,
@@ -1160,7 +1167,18 @@ export async function fetchAdminReviews(): Promise<Review[]> {
     console.debug('Using local reviews:', err);
   }
 
-  return getStored<Review[]>(K_REVIEWS, INITIAL_REVIEWS);
+  const baseReviews = getStored<Review[]>(K_REVIEWS, INITIAL_REVIEWS);
+  const liveReviews = getStoredReviews();
+  
+  const map = new Map<string, Review>();
+  // Seed with base
+  baseReviews.forEach((r) => map.set(r.id, r));
+  // Override or add live verified traveler reviews
+  liveReviews.forEach((r) => map.set(r.id, r));
+
+  return Array.from(map.values()).sort(
+    (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+  );
 }
 
 export async function toggleReviewHidden(

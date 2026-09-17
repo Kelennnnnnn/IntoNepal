@@ -15,6 +15,7 @@ import {
   CreditCard,
   ChevronRight,
   TrendingUp,
+  RefreshCw,
 } from 'lucide-react';
 import { AdminLayout } from '../../components/layout/AdminLayout';
 import {
@@ -29,6 +30,7 @@ import type { Booking, Agency, Payout, AuditLogEntry } from '../../lib/types';
 
 export const AdminDashboardPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [agencies, setAgencies] = useState<Agency[]>([]);
   const [payouts, setPayouts] = useState<Payout[]>([]);
@@ -40,27 +42,31 @@ export const AdminDashboardPage: React.FC = () => {
     commission_rate: 15,
   });
 
-  useEffect(() => {
-    async function load() {
-      try {
-        const [b, a, p, logs, s] = await Promise.all([
-          fetchAdminBookings(),
-          fetchAdminAgencies(),
-          fetchPayouts(),
-          fetchAllAuditLogs(),
-          fetchPlatformSettings(),
-        ]);
-        setBookings(b);
-        setAgencies(a);
-        setPayouts(p);
-        setAuditLogs(logs);
-        setSettings(s);
-      } catch (err) {
-        console.error('Failed to load dashboard data:', err);
-      } finally {
-        setLoading(false);
-      }
+  const load = async () => {
+    setLoading(true);
+    setErrorMessage(null);
+    try {
+      const [b, a, p, logs, s] = await Promise.all([
+        fetchAdminBookings(),
+        fetchAdminAgencies(),
+        fetchPayouts(),
+        fetchAllAuditLogs(),
+        fetchPlatformSettings(),
+      ]);
+      setBookings(b);
+      setAgencies(a);
+      setPayouts(p);
+      setAuditLogs(logs);
+      setSettings(s);
+    } catch (err: any) {
+      setErrorMessage(err.message || 'Failed to load platform operations telemetry');
+      console.error('Failed to load dashboard data:', err);
+    } finally {
+      setLoading(false);
     }
+  };
+
+  useEffect(() => {
     load();
   }, []);
 
@@ -78,7 +84,62 @@ export const AdminDashboardPage: React.FC = () => {
     <AdminLayout
       title="Platform Operations Dashboard"
       subtitle="Real-time financial telemetry, compliance queues, and system integrity overview"
+      actions={
+        <button
+          onClick={load}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-md border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 shadow-2xs transition-colors cursor-pointer"
+        >
+          <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+          Refresh Telemetry
+        </button>
+      }
     >
+      {/* ERROR BANNER */}
+      {errorMessage && (
+        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl flex items-center justify-between text-xs text-red-800 shadow-2xs">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 text-red-600 shrink-0" />
+            <span>{errorMessage}</span>
+          </div>
+          <button
+            onClick={load}
+            className="px-3 py-1 bg-red-600 text-white rounded font-semibold hover:bg-red-700 transition-colors cursor-pointer"
+          >
+            Retry Connection
+          </button>
+        </div>
+      )}
+
+      {/* LOADING SKELETON */}
+      {loading ? (
+        <div className="space-y-6 animate-pulse">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="h-28 bg-white rounded-xl border border-slate-200 p-4 space-y-3">
+                <div className="h-4 bg-slate-100 rounded w-1/2"></div>
+                <div className="h-8 bg-slate-200 rounded w-3/4"></div>
+              </div>
+            ))}
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="h-64 bg-white rounded-xl border border-slate-200 p-4"></div>
+            <div className="h-64 bg-white rounded-xl border border-slate-200 p-4"></div>
+          </div>
+        </div>
+      ) : (
+        <>
+          {/* EMPTY TELEMETRY NOTICE IF ZERO BOOKINGS AND AGENCIES */}
+          {bookings.length === 0 && agencies.length === 0 && (
+            <div className="mb-6 p-4 bg-amber-50/70 border border-amber-200 rounded-xl text-xs text-amber-900 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <ShieldAlert className="w-4 h-4 text-amber-700 shrink-0" />
+                <span>No transaction activity or registered agencies recorded in database yet.</span>
+              </div>
+              <Link to="/admin/agencies" className="font-semibold text-amber-800 hover:underline">
+                Review Verification Queue →
+              </Link>
+            </div>
+          )}
       {/* SYSTEM ALERTS STRIP */}
       <div className="space-y-2 mb-6">
         {settings.maintenance_mode && (
@@ -316,6 +377,8 @@ export const AdminDashboardPage: React.FC = () => {
           </div>
         </div>
       </div>
+        </>
+      )}
     </AdminLayout>
   );
 };

@@ -20,6 +20,7 @@ import { toast } from 'sonner';
 export const AdminUsersPage: React.FC = () => {
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState<'all' | 'user' | 'agency' | 'admin'>('all');
 
@@ -30,10 +31,12 @@ export const AdminUsersPage: React.FC = () => {
 
   const loadData = async () => {
     setLoading(true);
+    setErrorMessage(null);
     try {
       const data = await fetchAdminUsers();
       setUsers(data);
     } catch (err: any) {
+      setErrorMessage(err.message || 'Failed to load users');
       toast.error('Failed to load users: ' + err.message);
     } finally {
       setLoading(false);
@@ -60,7 +63,7 @@ export const AdminUsersPage: React.FC = () => {
     try {
       toast.loading(`Updating security role for ${editingUser.email}...`, { id: 'role-update' });
       await updateUserRole(editingUser.id, selectedRole, editingUser.role);
-      toast.success(`Role updated to "${selectedRole.toUpperCase()}" for ${editingUser.name}`, {
+      toast.success(`Role updated to "${selectedRole.toUpperCase()}" for ${editingUser.name || 'user'}`, {
         id: 'role-update',
       });
       setEditingUser(null);
@@ -77,9 +80,9 @@ export const AdminUsersPage: React.FC = () => {
     const q = searchQuery.toLowerCase().trim();
     const matchesSearch =
       !q ||
-      u.name.toLowerCase().includes(q) ||
-      u.email.toLowerCase().includes(q) ||
-      u.id.toLowerCase().includes(q);
+      (u.name || '').toLowerCase().includes(q) ||
+      (u.email || '').toLowerCase().includes(q) ||
+      (u.id || '').toLowerCase().includes(q);
     return matchesRole && matchesSearch;
   });
 
@@ -90,13 +93,27 @@ export const AdminUsersPage: React.FC = () => {
       actions={
         <button
           onClick={loadData}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-md border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 shadow-2xs transition-colors"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-md border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 shadow-2xs transition-colors cursor-pointer"
         >
           <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
           Refresh
         </button>
       }
     >
+      {errorMessage && (
+        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl flex items-center justify-between text-xs text-red-800">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 text-red-600 shrink-0" />
+            <span>{errorMessage}</span>
+          </div>
+          <button
+            onClick={loadData}
+            className="px-3 py-1 bg-red-600 text-white rounded font-semibold hover:bg-red-700 transition-colors"
+          >
+            Retry
+          </button>
+        </div>
+      )}
       {/* FILTER CONTROLS */}
       <div className="bg-white rounded-xl border border-slate-200 p-4 mb-6 shadow-2xs flex flex-col sm:flex-row items-center justify-between gap-3">
         <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-lg">
@@ -228,7 +245,7 @@ export const AdminUsersPage: React.FC = () => {
 
       {/* ROLE MODIFICATION MODAL */}
       {editingUser && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60">
           <div className="bg-white rounded-xl max-w-md w-full border border-slate-200 shadow-2xl p-6">
             <div className="flex items-center justify-between pb-3 border-b border-slate-200 mb-4">
               <h3 className="text-sm font-bold text-slate-900">

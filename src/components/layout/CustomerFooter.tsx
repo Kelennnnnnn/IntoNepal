@@ -112,32 +112,42 @@ export const CustomerFooter: React.FC = () => {
           {/* Col 3: Trekkers & Support */}
           <div>
             <h5 className="font-serif text-xs uppercase font-bold tracking-wider text-white mb-3">
-              Traveler Info
+              Expedition Tools
             </h5>
             <ul className="space-y-2 text-xs text-[#9DA8A3]">
+              <li>
+                <Link to="/plan-custom-trek" className="text-[#D97706] hover:text-white font-semibold transition-colors">
+                  Custom Trek Planner ⚡
+                </Link>
+              </li>
+              <li>
+                <Link to="/trail-profiler" className="text-[#60A5FA] hover:text-white font-semibold transition-colors">
+                  Trail Elevation Radar
+                </Link>
+              </li>
+              <li>
+                <Link to="/safety" className="text-[#10B981] hover:text-white font-semibold transition-colors">
+                  Safety, Altitude &amp; Permits Hub
+                </Link>
+              </li>
               <li>
                 <Link to="/about" className="hover:text-white transition-colors">
                   Why Verified Agencies
                 </Link>
               </li>
               <li>
-                <Link to="/cancellation-policy" className="hover:text-white transition-colors">
+                <Link to="/cancellation" className="hover:text-white transition-colors">
                   Cancellation Policy
                 </Link>
               </li>
               <li>
                 <Link to="/faq" className="hover:text-white transition-colors">
-                  Help & FAQs
+                  Help &amp; FAQs
                 </Link>
               </li>
               <li>
-                <Link to="/contact" className="hover:text-white transition-colors">
-                  Contact Support
-                </Link>
-              </li>
-              <li>
-                <Link to="/bookings" className="hover:text-white transition-colors">
-                  Track My Booking
+                <Link to="/messages" className="hover:text-white transition-colors">
+                  Traveler Messages &amp; Quotes
                 </Link>
               </li>
             </ul>
@@ -158,6 +168,16 @@ export const CustomerFooter: React.FC = () => {
                 <a href={isAll ? '/agency/onboarding' : `${PORTAL_URLS.partner}/agency/onboarding`} className="hover:text-white transition-colors">
                   Register as an Agency
                 </a>
+              </li>
+              <li>
+                <Link to="/admin" className="hover:text-white transition-colors text-emerald-400 font-medium">
+                  Super Admin Console
+                </Link>
+              </li>
+              <li>
+                <Link to="/design-system" className="hover:text-white transition-colors text-slate-400">
+                  Design System Showcase
+                </Link>
               </li>
               <li className="pt-2 border-t border-[#303834] mt-2">
                 <Link to="/terms" className="hover:text-white transition-colors">

@@ -120,7 +120,7 @@ export const TrekDetailModal: React.FC<TrekDetailModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/70 backdrop-blur-xs overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/70 overflow-y-auto">
       <div className="bg-white rounded-lg shadow-2xl max-w-4xl w-full border border-[#CBD5E1] overflow-hidden my-6 max-h-[92vh] flex flex-col animate-in fade-in zoom-in-95 duration-200">
         
         {/* Modal Header */}
@@ -196,7 +196,7 @@ export const TrekDetailModal: React.FC<TrekDetailModalProps> = ({
           <div className="flex items-center gap-3">
             <div className="text-right">
               <span className="text-[10px] text-[#5A6B7C] block">Price per Person</span>
-              <span className="font-serif font-bold text-xl text-[#E8890C]">${trek.price.toLocaleString()}</span>
+              <span className="font-serif font-bold text-xl text-[#E8890C]">${Number(trek.price || 0).toLocaleString()}</span>
             </div>
             <button
               onClick={() => setActiveTab('book')}
@@ -277,7 +277,7 @@ export const TrekDetailModal: React.FC<TrekDetailModalProps> = ({
                       className="w-full h-full object-cover"
                       referrerPolicy="no-referrer"
                     />
-                    <div className="absolute bottom-3 left-3 bg-black/60 text-white text-xs px-3 py-1 rounded backdrop-blur-xs font-medium">
+                    <div className="absolute bottom-3 left-3 bg-black/75 text-white text-xs px-3 py-1 rounded font-medium">
                       Best Seasons: {trek.bestSeasons}
                     </div>
                   </div>
@@ -330,7 +330,7 @@ export const TrekDetailModal: React.FC<TrekDetailModalProps> = ({
                   <div className="border border-[#ECEFF3] rounded-lg p-4 bg-white">
                     <h4 className="font-bold text-xs text-[#17222E] mb-2.5">Key Trip Highlights</h4>
                     <div className="space-y-1.5">
-                      {trek.badges.map((badge, idx) => (
+                      {(trek.badges || []).map((badge, idx) => (
                         <div key={idx} className="flex items-center gap-2 text-xs text-[#17222E]">
                           <CheckCircle2 className="w-3.5 h-3.5 text-[#1B7A5A] shrink-0" />
                           <span>{badge}</span>
@@ -367,12 +367,12 @@ export const TrekDetailModal: React.FC<TrekDetailModalProps> = ({
           {activeTab === 'itinerary' && (
             <div className="space-y-3">
               <div className="bg-blue-50 border border-blue-200 rounded p-3 text-xs text-blue-900 flex items-center justify-between">
-                <span>{trek.itinerary.length} Days Comprehensive Himalayan Journey</span>
+                <span>{(trek.itinerary || []).length} Days Comprehensive Himalayan Journey</span>
                 <span className="font-medium text-[#1E4B8F]">Click any day to expand highlights & lodges</span>
               </div>
 
               <div className="space-y-2.5">
-                {trek.itinerary.map((day) => {
+                {(trek.itinerary || []).map((day) => {
                   const isExpanded = expandedDay === day.day;
                   return (
                     <div
@@ -439,7 +439,7 @@ export const TrekDetailModal: React.FC<TrekDetailModalProps> = ({
                   <span>What's Included in the Price</span>
                 </h3>
                 <ul className="space-y-2 text-xs text-emerald-900">
-                  {trek.included.map((item, idx) => (
+                  {(trek.included || []).map((item, idx) => (
                     <li key={idx} className="flex items-start gap-2">
                       <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
                       <span>{item}</span>
@@ -455,7 +455,7 @@ export const TrekDetailModal: React.FC<TrekDetailModalProps> = ({
                   <span>What's Not Included (Clear & Transparent)</span>
                 </h3>
                 <ul className="space-y-2 text-xs text-red-900">
-                  {trek.excluded.map((item, idx) => (
+                  {(trek.excluded || []).map((item, idx) => (
                     <li key={idx} className="flex items-start gap-2">
                       <span className="text-red-500 font-bold shrink-0 mt-0.5">•</span>
                       <span>{item}</span>
@@ -478,7 +478,7 @@ export const TrekDetailModal: React.FC<TrekDetailModalProps> = ({
               <div className="border border-[#ECEFF3] rounded-lg p-5 bg-white">
                 <h3 className="font-bold text-sm text-[#17222E] mb-3">Recommended Gear for {trek.title}</h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs text-[#17222E]">
-                  {trek.gearList.map((gear, idx) => (
+                  {(trek.gearList || []).map((gear, idx) => (
                     <div key={idx} className="flex items-center gap-2 p-2 rounded bg-gray-50 border border-gray-100">
                       <Check className="w-3.5 h-3.5 text-[#1E4B8F] shrink-0" />
                       <span>{gear}</span>
@@ -513,9 +513,9 @@ export const TrekDetailModal: React.FC<TrekDetailModalProps> = ({
                     onChange={(e) => setSelectedDate(e.target.value)}
                     className="w-full bg-white border border-[#CBD5E1] rounded px-3 py-2 font-medium text-xs focus:ring-1 focus:ring-[#1E4B8F] outline-none cursor-pointer"
                   >
-                    {trek.availableDates.map((date) => (
+                    {(trek.availableDates || []).map((date) => (
                       <option key={date} value={date}>
-                        {date} ({trek.spotsLeft} spots left)
+                        {date} ({trek.spotsLeft || 0} spots left)
                       </option>
                     ))}
                   </select>
@@ -610,7 +610,7 @@ export const TrekDetailModal: React.FC<TrekDetailModalProps> = ({
               <div className="border border-[#ECEFF3] bg-[#FBF8F3] rounded p-4 flex items-center justify-between text-xs">
                 <div>
                   <span className="text-[#5A6B7C] block">Estimated Total for {guests} {guests === 1 ? 'Trekker' : 'Trekkers'}</span>
-                  <span className="text-xl font-bold font-serif text-[#E8890C]">${totalAmount.toLocaleString()}</span>
+                  <span className="text-xl font-bold font-serif text-[#E8890C]">${Number(totalAmount || 0).toLocaleString()}</span>
                   <span className="text-[11px] text-emerald-700 block font-medium">All permits, guide, and teahouses included</span>
                 </div>
 

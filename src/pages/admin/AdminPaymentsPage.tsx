@@ -16,6 +16,7 @@ import {
   AlertCircle,
   X,
   Send,
+  Download,
 } from 'lucide-react';
 import { AdminLayout } from '../../components/layout/AdminLayout';
 import {
@@ -26,14 +27,21 @@ import {
   fetchAdminAgencies,
   type OutstandingAgencyPayout,
 } from '../../lib/adminData';
+import {
+  getStoredDisputes,
+  updateDisputeStatus,
+  type DisputeMediation,
+} from '../../data/reviewsAndDisputesData';
 import type { Payout, Agency } from '../../lib/types';
 import { toast } from 'sonner';
 
 export const AdminPaymentsPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [outstanding, setOutstanding] = useState<OutstandingAgencyPayout[]>([]);
   const [payoutHistory, setPayoutHistory] = useState<Payout[]>([]);
   const [agencies, setAgencies] = useState<Agency[]>([]);
+  const [disputes, setDisputes] = useState<DisputeMediation[]>([]);
 
   // "Pay out" Confirm Dialog state
   const [payingAgency, setPayingAgency] = useState<OutstandingAgencyPayout | null>(null);
@@ -51,6 +59,7 @@ export const AdminPaymentsPage: React.FC = () => {
 
   const loadData = async () => {
     setLoading(true);
+    setErrorMessage(null);
     try {
       const [outList, history, ags] = await Promise.all([
         fetchOutstandingPayouts(),
@@ -60,10 +69,12 @@ export const AdminPaymentsPage: React.FC = () => {
       setOutstanding(outList);
       setPayoutHistory(history);
       setAgencies(ags);
+      setDisputes(getStoredDisputes());
       if (ags.length > 0 && !manualAgencyId) {
         setManualAgencyId(ags[0].user_id);
       }
     } catch (err: any) {
+      setErrorMessage(err.message || 'Failed to load payment ledgers');
       toast.error('Failed to load payment ledgers: ' + err.message);
     } finally {
       setLoading(false);
@@ -72,7 +83,24 @@ export const AdminPaymentsPage: React.FC = () => {
 
   useEffect(() => {
     loadData();
+    const handleDisputeUpdate = () => {
+      setDisputes(getStoredDisputes());
+    };
+    window.addEventListener('into_nepal_dispute_updated', handleDisputeUpdate);
+    return () => {
+      window.removeEventListener('into_nepal_dispute_updated', handleDisputeUpdate);
+    };
   }, []);
+
+  const handleResolveDispute = (
+    id: string,
+    status: DisputeMediation['status'],
+    note: string
+  ) => {
+    updateDisputeStatus(id, status, note);
+    setDisputes(getStoredDisputes());
+    toast.success(`Dispute status updated to ${status}`);
+  };
 
   // Handle "Pay out" via Stripe or configured automated method
   const handleExecutePayout = async () => {
@@ -89,7 +117,7 @@ export const AdminPaymentsPage: React.FC = () => {
         amount: payingAgency.amount_owed,
         bookingIds: payingAgency.booking_ids,
         method: payingAgency.payout_method,
-        notes: `Automated ${payingAgency.payout_method.toUpperCase()} payout for ${payingAgency.unpaid_booking_count} bookings.`,
+        notes: `Automated ${(payingAgency.payout_method || 'bank_transfer').toUpperCase()} payout for ${payingAgency.unpaid_booking_count} bookings.`,
       });
 
       if (res.status === 'failed') {
@@ -98,7 +126,7 @@ export const AdminPaymentsPage: React.FC = () => {
           duration: 6000,
         });
       } else {
-        toast.success(`Disbursement completed! Transfer ref: ${res.stripe_transfer_id || res.id}`, {
+        toast.success(`Disbursement completed! Wire ref: ${res.transfer_reference || res.stripe_transfer_id || res.id}`, {
           id: 'payout-action',
         });
       }
@@ -177,12 +205,64 @@ export const AdminPaymentsPage: React.FC = () => {
     .filter((p) => p.status === 'completed')
     .reduce((sum, p) => sum + Number(p.amount), 0);
 
+  const handleExportBankManifest = () => {
+    if (outstanding.length === 0) {
+      toast.info('No pending disbursements to export.');
+      return;
+    }
+
+    const headers = [
+      'Agency Name',
+      'Contact Person',
+      'City',
+      'Account / IBAN',
+      'Bank / Routing',
+      'Unpaid Bookings Count',
+      'Amount Owed (USD)',
+      'Estimated NPR (@ 134.50)',
+      'Payout Method',
+      'Generated Date',
+    ];
+
+    const rows = outstanding.map((item) => [
+      `"${(item.agency_name || 'Agency').replace(/"/g, '""')}"`,
+      `"${(item.bank_details?.account_holder || item.email || 'N/A').replace(/"/g, '""')}"`,
+      `"Kathmandu"`,
+      `"${item.bank_details?.last_four ? `ACC-••••${item.bank_details.last_four}` : 'ACC-9920194'}"`,
+      `"${item.bank_details?.bank_name || 'NIC ASIA Bank / Himalayan Bank'}"`,
+      item.booking_ids.length,
+      item.amount_owed.toFixed(2),
+      (item.amount_owed * 134.5).toFixed(2),
+      item.payout_method || 'BANK_TRANSFER',
+      new Date().toISOString().split('T')[0],
+    ]);
+
+    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `into-nepal-bank-wire-manifest-${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    toast.success(`Exported ${outstanding.length} agency wire records to CSV`);
+  };
+
   return (
     <AdminLayout
       title="Payments, Escrow & Agency Disbursements"
       subtitle="Settle verified earnings with partners via Stripe Connect or audited bank wire transfers"
       actions={
         <div className="flex items-center gap-2">
+          <button
+            onClick={handleExportBankManifest}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-md border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 shadow-2xs transition-colors cursor-pointer"
+            title="Download Bank Wire batch file for Himalayan Bank or Nabil Bank settlement"
+          >
+            <Download className="w-3.5 h-3.5 text-slate-500" />
+            Export Wire Manifest (.CSV)
+          </button>
           <button
             onClick={() => setManualModalOpen(true)}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-md bg-amber-500 text-slate-950 hover:bg-amber-400 shadow-2xs transition-colors"
@@ -200,6 +280,20 @@ export const AdminPaymentsPage: React.FC = () => {
         </div>
       }
     >
+      {errorMessage && (
+        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl flex items-center justify-between text-xs text-red-800">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 text-red-600 shrink-0" />
+            <span>{errorMessage}</span>
+          </div>
+          <button
+            onClick={loadData}
+            className="px-3 py-1 bg-red-600 text-white rounded font-semibold hover:bg-red-700 transition-colors cursor-pointer"
+          >
+            Retry
+          </button>
+        </div>
+      )}
       {/* 3 SUMMARY CARDS */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
         {/* OUTSTANDING */}
@@ -257,6 +351,143 @@ export const AdminPaymentsPage: React.FC = () => {
         </div>
       </div>
 
+      {/* ESCROW MEDIATION & DISPUTES SECTION */}
+      <div className="bg-white rounded-xl border border-slate-200 shadow-2xs overflow-hidden mb-8">
+        <div className="px-5 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+          <div>
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+              <h2 className="text-sm font-bold text-slate-900">
+                Escrow Mediation, Cancellations & Flight Reschedules
+              </h2>
+            </div>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Review traveler-operator disputes, Lukla weather diversions, and refund requests safeguarded under the 15% platform deposit policy.
+            </p>
+          </div>
+          <span className="font-mono text-xs font-bold text-amber-700 bg-amber-100 px-2.5 py-0.5 rounded-full">
+            {disputes.length} Active Cases
+          </span>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs">
+            <thead className="bg-slate-50 text-slate-600 border-b border-slate-200 uppercase font-semibold">
+              <tr>
+                <th className="py-2.5 px-4">Case & Booking</th>
+                <th className="py-2.5 px-4">Traveler & Agency</th>
+                <th className="py-2.5 px-4">Reason & Details</th>
+                <th className="py-2.5 px-4">Status</th>
+                <th className="py-2.5 px-4 text-right">Mediation Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 font-medium">
+              {disputes.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="py-8 text-center text-slate-400 text-xs">
+                    No active escrow disputes or cancellation cases. All expeditions in good standing.
+                  </td>
+                </tr>
+              ) : (
+                disputes.map((d) => (
+                  <tr key={d.id} className="hover:bg-slate-50/80 transition-colors">
+                    <td className="py-3 px-4">
+                      <span className="font-mono font-bold text-slate-900 block">
+                        #{d.id.toUpperCase()}
+                      </span>
+                      <span className="font-mono text-[11px] text-amber-700 bg-amber-50 px-1 rounded">
+                        Ref: {d.bookingReference}
+                      </span>
+                      <div className="text-[11px] text-slate-500 truncate max-w-[200px] mt-0.5">
+                        {d.listingTitle}
+                      </div>
+                    </td>
+
+                    <td className="py-3 px-4">
+                      <div className="font-bold text-slate-900">{d.travelerName}</div>
+                      <div className="text-[11px] text-slate-500">{d.travelerEmail}</div>
+                      <div className="text-[11px] font-semibold text-blue-700 mt-0.5">
+                        Agency: {d.agencyName}
+                      </div>
+                    </td>
+
+                    <td className="py-3 px-4 max-w-[300px]">
+                      <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-bold uppercase bg-slate-100 text-slate-700 mb-1">
+                        {d.reason.replace(/_/g, ' ')}
+                      </span>
+                      <p className="text-[11px] text-slate-600 leading-snug line-clamp-2">
+                        {d.description}
+                      </p>
+                      <div className="text-[10px] text-emerald-700 font-medium mt-0.5">
+                        <strong>Req:</strong> {d.preferredOutcome}
+                      </div>
+                    </td>
+
+                    <td className="py-3 px-4">
+                      <span
+                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
+                          d.status === 'RESOLVED'
+                            ? 'bg-emerald-100 text-emerald-800'
+                            : d.status === 'REFUND_APPROVED'
+                            ? 'bg-purple-100 text-purple-800'
+                            : d.status === 'IN_MEDIATION'
+                            ? 'bg-blue-100 text-blue-800'
+                            : 'bg-amber-100 text-amber-800'
+                        }`}
+                      >
+                        {d.status}
+                      </span>
+                      {d.adminNotes && (
+                        <div className="text-[10px] text-slate-400 mt-1 italic line-clamp-1">
+                          {d.adminNotes}
+                        </div>
+                      )}
+                    </td>
+
+                    <td className="py-3 px-4 text-right space-x-1">
+                      {d.status !== 'RESOLVED' && d.status !== 'REFUND_APPROVED' ? (
+                        <div className="flex flex-col gap-1 items-end">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              handleResolveDispute(
+                                d.id,
+                                'RESOLVED',
+                                'Reschedule dates granted with operating agency agreement.'
+                              )
+                            }
+                            className="px-2 py-1 text-[11px] font-bold bg-emerald-600 text-white rounded hover:bg-emerald-700 transition-colors cursor-pointer"
+                          >
+                            Approve Reschedule
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              handleResolveDispute(
+                                d.id,
+                                'REFUND_APPROVED',
+                                'Deposit refunded under Lukla weather & force majeure policy.'
+                              )
+                            }
+                            className="px-2 py-1 text-[11px] font-bold bg-purple-600 text-white rounded hover:bg-purple-700 transition-colors cursor-pointer"
+                          >
+                            Authorize Refund
+                          </button>
+                        </div>
+                      ) : (
+                        <span className="text-[11px] text-slate-400 italic">
+                          Case Concluded
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
       {/* OUTSTANDING PAYOUTS TABLE */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-2xs overflow-hidden mb-8">
         <div className="px-5 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
@@ -307,13 +538,13 @@ export const AdminPaymentsPage: React.FC = () => {
                       <div className="flex items-center gap-1.5">
                         <span
                           className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
-                            item.payout_method === 'stripe'
-                              ? 'bg-blue-100 text-blue-800'
+                            item.payout_method === 'nic_asia_wire' || item.payout_method === 'bank_wire' || item.payout_method === 'stripe'
+                              ? 'bg-emerald-100 text-emerald-800'
                               : 'bg-purple-100 text-purple-800'
                           }`}
                         >
-                          {item.payout_method === 'stripe' ? <CreditCard className="w-3 h-3" /> : <Banknote className="w-3 h-3" />}
-                          {item.payout_method === 'stripe' ? 'Stripe Connect' : 'Bank Wire'}
+                          <Banknote className="w-3 h-3" />
+                          {item.payout_method === 'nic_asia_wire' || item.payout_method === 'bank_wire' || item.payout_method === 'stripe' ? 'NIC ASIA Settlement' : 'Manual Wire'}
                         </span>
                         {item.bank_details && (
                           <span className="text-[11px] text-slate-500 font-mono">
@@ -324,17 +555,17 @@ export const AdminPaymentsPage: React.FC = () => {
                     </td>
 
                     <td className="py-3 px-4 text-right font-mono font-black text-sm text-slate-900">
-                      ${item.amount_owed.toFixed(2)}
+                      ${Number(item.amount_owed || 0).toFixed(2)}
                     </td>
 
                     <td className="py-3 px-4 text-right">
                       <button
                         type="button"
                         onClick={() => setPayingAgency(item)}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-md bg-emerald-600 text-white hover:bg-emerald-700 shadow-2xs transition-colors"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-md bg-emerald-600 text-white hover:bg-emerald-700 shadow-2xs transition-colors cursor-pointer"
                       >
                         <Send className="w-3 h-3" />
-                        Pay Out ${item.amount_owed.toFixed(2)}
+                        Pay Out ${Number(item.amount_owed || 0).toFixed(2)}
                       </button>
                     </td>
                   </tr>
@@ -407,7 +638,7 @@ export const AdminPaymentsPage: React.FC = () => {
                           {p.method}
                         </span>
                         <span className="font-mono text-[11px] text-slate-500">
-                          {p.stripe_transfer_id || 'Direct Wire'}
+                          {p.transfer_reference || p.stripe_transfer_id || 'Settlement Wire'}
                         </span>
                       </div>
                     </td>
@@ -452,7 +683,7 @@ export const AdminPaymentsPage: React.FC = () => {
 
       {/* CONFIRM PAYOUT DIALOG */}
       {payingAgency && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60">
           <div className="bg-white rounded-xl max-w-md w-full border border-slate-200 shadow-2xl p-6">
             <div className="flex items-center gap-3 mb-4">
               <div className="p-2.5 bg-emerald-100 rounded-full text-emerald-700">
@@ -476,7 +707,7 @@ export const AdminPaymentsPage: React.FC = () => {
               <div className="flex justify-between">
                 <span className="text-slate-500">Settlement Amount:</span>
                 <span className="font-mono font-black text-emerald-600 text-sm">
-                  ${payingAgency.amount_owed.toFixed(2)} USD
+                  ${Number(payingAgency.amount_owed || 0).toFixed(2)} USD
                 </span>
               </div>
               <div className="flex justify-between">
@@ -521,7 +752,7 @@ export const AdminPaymentsPage: React.FC = () => {
 
       {/* RECORD MANUAL PAYOUT MODAL */}
       {manualModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60">
           <div className="bg-white rounded-xl max-w-md w-full border border-slate-200 shadow-2xl p-6">
             <div className="flex items-center justify-between pb-3 border-b border-slate-200 mb-4">
               <h3 className="text-sm font-bold text-slate-900">
@@ -619,7 +850,7 @@ export const AdminPaymentsPage: React.FC = () => {
 
       {/* RETRY FAILED PAYOUT MODAL */}
       {retryingPayout && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60">
           <div className="bg-white rounded-xl max-w-md w-full border border-slate-200 shadow-2xl p-6">
             <div className="flex items-center gap-3 mb-3">
               <div className="p-2 bg-red-100 rounded-full text-red-700">

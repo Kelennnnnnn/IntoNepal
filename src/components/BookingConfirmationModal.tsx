@@ -30,7 +30,7 @@ export const BookingConfirmationModal: React.FC<BookingConfirmationProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 overflow-y-auto">
       <div className="bg-white rounded-lg shadow-2xl max-w-2xl w-full border border-[#CBD5E1] overflow-hidden my-8 animate-in fade-in zoom-in-95 duration-200">
         
         {/* Top Header Banner */}
@@ -48,7 +48,7 @@ export const BookingConfirmationModal: React.FC<BookingConfirmationProps> = ({
             No credit card or online payment was required. Your request has been transmitted directly to the verified Nepali operator.
           </p>
 
-          <div className="absolute top-6 right-6 bg-white/15 px-3 py-1.5 rounded text-right backdrop-blur-xs">
+          <div className="absolute top-6 right-6 bg-white/20 px-3 py-1.5 rounded text-right">
             <span className="text-[10px] text-emerald-100 block">Voucher Reference</span>
             <span className="font-mono text-sm font-bold tracking-wider">{bookingId}</span>
           </div>
@@ -86,7 +86,7 @@ export const BookingConfirmationModal: React.FC<BookingConfirmationProps> = ({
               </div>
               <div className="text-right shrink-0">
                 <span className="text-[11px] text-[#5A6B7C] block">Total Estimated Cost</span>
-                <span className="text-xl font-bold font-serif text-[#E8890C]">${totalEstimatedAmount.toLocaleString()}</span>
+                <span className="text-xl font-bold font-serif text-[#E8890C]">${Number(totalEstimatedAmount || 0).toLocaleString()}</span>
                 <span className="text-[10px] text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded block mt-1 font-medium">
                   Pay on arrival in Kathmandu
                 </span>

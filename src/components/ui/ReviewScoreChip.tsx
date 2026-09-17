@@ -35,10 +35,10 @@ export const ReviewScoreChip: React.FC<ReviewScoreChipProps> = ({
   return (
     <div
       className={`inline-flex items-center justify-center bg-[#1E4B8F] text-white select-none whitespace-nowrap font-bold tracking-tight shadow-none ${sizeClasses} ${className}`.trim()}
-      aria-label={isNew ? 'New listing' : `Review score: ${rating?.toFixed(1)}`}
+      aria-label={isNew || rating == null ? 'New listing' : `Review score: ${Number(rating).toFixed(1)}`}
       {...rest}
     >
-      {isNew ? 'New' : rating.toFixed(1)}
+      {isNew || rating == null ? 'New' : Number(rating).toFixed(1)}
     </div>
   );
 };

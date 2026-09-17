@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { ShieldCheck, Lock, Mail, ArrowRight, Loader2, AlertCircle, KeyRound } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
 import { toast } from 'sonner';
+import { checkLoginRateLimit, recordLoginAttempt, resetLoginRateLimit } from '../../lib/rateLimit';
 
 export const AdminLoginPage: React.FC = () => {
   const navigate = useNavigate();
@@ -23,20 +24,32 @@ export const AdminLoginPage: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
+
+    // Rate limiting check
+    const limit = checkLoginRateLimit(email);
+    if (!limit.allowed) {
+      setErrorMessage(`Too many authentication attempts. Please wait ${limit.retryAfterSeconds} seconds before trying again.`);
+      toast.error(`Rate limited. Try again in ${limit.retryAfterSeconds}s.`);
+      return;
+    }
+
     setLoading(true);
 
     try {
       // 1. First attempt Supabase authentication
       await signIn(email, password);
+      resetLoginRateLimit(email);
       toast.success('Credentials verified. Initiating two-factor authentication...');
       navigate('/admin/mfa-verify');
     } catch (err: any) {
       // If Supabase invalid credentials and using default admin email, allow admin session
       if (email.trim().toLowerCase() === 'admin@intonepal.com' && password === 'admin123') {
+        resetLoginRateLimit(email);
         await signInAdminDirect(email);
         toast.success('Admin authorized. Initiating 2FA check...');
         navigate('/admin/mfa-verify');
       } else {
+        recordLoginAttempt(email);
         setErrorMessage(err.message || 'Invalid administrator credentials. Access restricted.');
         toast.error('Authentication failed. Check credentials.');
       }

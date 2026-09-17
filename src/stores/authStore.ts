@@ -12,6 +12,8 @@ interface AuthState {
   initialize: () => () => void;
   signIn: (email: string, password: string) => Promise<void>;
   signInAdminDirect: (email?: string) => Promise<void>;
+  signInAgencyDirect: (email?: string) => Promise<void>;
+  signInTravelerDirect: (email?: string, name?: string) => Promise<void>;
   setMfaVerified: (verified: boolean) => void;
   signUp: (email: string, password: string, name?: string) => Promise<void>;
   signInWithGoogle: () => Promise<void>;
@@ -89,8 +91,52 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
     }
   },
 
+  signInAgencyDirect: async (email = 'operations@himalayanglacier.com') => {
+    set({ isLoading: true });
+    const agencyUser: AuthUser = {
+      id: 'usr-agency-01',
+      email,
+      name: 'Himalayan Glacier Expeditions',
+      role: 'agency',
+    };
+    try {
+      localStorage.setItem('into_nepal_agency_session', JSON.stringify(agencyUser));
+      set({
+        user: agencyUser,
+        isAuthenticated: true,
+        mfaVerified: false,
+        isLoading: false,
+      });
+    } catch (err) {
+      set({ isLoading: false });
+      throw err;
+    }
+  },
+
+  signInTravelerDirect: async (email = 'sarah.jenkins@example.com', name = 'Sarah Jenkins') => {
+    set({ isLoading: true });
+    const travelerUser: AuthUser = {
+      id: 'usr-traveler-01',
+      email,
+      name,
+      role: 'user',
+    };
+    try {
+      localStorage.setItem('into_nepal_traveler_session', JSON.stringify(travelerUser));
+      set({
+        user: travelerUser,
+        isAuthenticated: true,
+        mfaVerified: false,
+        isLoading: false,
+      });
+    } catch (err) {
+      set({ isLoading: false });
+      throw err;
+    }
+  },
+
   initialize: () => {
-    // 1. Check for active admin local session
+    // 1. Check for active admin, agency, or traveler local demo session
     try {
       const storedAdmin = localStorage.getItem('into_nepal_admin_session');
       const isMfa = sessionStorage.getItem('into_nepal_admin_mfa_verified') === 'true';
@@ -106,8 +152,36 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
           return () => {};
         }
       }
+
+      const storedAgency = localStorage.getItem('into_nepal_agency_session');
+      if (storedAgency) {
+        const parsed = JSON.parse(storedAgency) as AuthUser;
+        if (parsed.role === 'agency') {
+          set({
+            user: parsed,
+            isAuthenticated: true,
+            mfaVerified: false,
+            isLoading: false,
+          });
+          return () => {};
+        }
+      }
+
+      const storedTraveler = localStorage.getItem('into_nepal_traveler_session');
+      if (storedTraveler) {
+        const parsed = JSON.parse(storedTraveler) as AuthUser;
+        if (parsed.role === 'user') {
+          set({
+            user: parsed,
+            isAuthenticated: true,
+            mfaVerified: false,
+            isLoading: false,
+          });
+          return () => {};
+        }
+      }
     } catch (err) {
-      console.debug('Admin session parse check:', err);
+      console.debug('Local session parse check:', err);
     }
 
     // 2. Fetch current Supabase session on mount
@@ -277,6 +351,8 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
     set({ isLoading: true });
     try {
       localStorage.removeItem('into_nepal_admin_session');
+      localStorage.removeItem('into_nepal_agency_session');
+      localStorage.removeItem('into_nepal_traveler_session');
       sessionStorage.removeItem('into_nepal_admin_mfa_verified');
       await supabase.auth.signOut();
     } catch (err) {

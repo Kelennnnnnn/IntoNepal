@@ -7,7 +7,7 @@ interface TrekPrepGuideModalProps {
 
 export const TrekPrepGuideModal: React.FC<TrekPrepGuideModalProps> = ({ onClose }) => {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 overflow-y-auto">
       <div className="bg-white rounded-lg shadow-2xl max-w-2xl w-full border border-[#CBD5E1] overflow-hidden my-6 max-h-[90vh] flex flex-col animate-in fade-in zoom-in-95 duration-200">
         
         {/* Header */}

@@ -1,20 +1,23 @@
-import { createPlaceholderPage } from '../PlaceholderPage';
-
 // Public customer pages
 export { HomePage } from './HomePage';
+export { IntoNepalPage } from './IntoNepalPage';
 export { ActivitiesPage } from './ActivitiesPage';
-export const ActivityDetailPage = createPlaceholderPage('ActivityDetailPage', 'Customer Portal');
-export const AgencyProfilePage = createPlaceholderPage('AgencyProfilePage', 'Customer Portal');
-export const AboutPage = createPlaceholderPage('AboutPage', 'Customer Portal');
-export const ContactPage = createPlaceholderPage('ContactPage', 'Customer Portal');
-export const FaqPage = createPlaceholderPage('FaqPage', 'Customer Portal');
-export const CancellationPage = createPlaceholderPage('CancellationPage', 'Customer Portal');
-export const CustomerLoginPage = createPlaceholderPage('CustomerLoginPage', 'Customer Portal');
+export { ActivityDetailPage } from './ActivityDetailPage';
+export { AgencyProfilePage } from './AgencyProfilePage';
+export { AboutPage } from './AboutPage';
+export { ContactPage } from './ContactPage';
+export { FaqPage } from './FaqPage';
+export { CancellationPage } from './CancellationPage';
+export { TrekkerSafetyHubPage } from './TrekkerSafetyHubPage';
+export { TrailProfilerPage } from './TrailProfilerPage';
+export { CustomItineraryPlannerPage } from './CustomItineraryPlannerPage';
+export { CustomerLoginPage } from './CustomerLoginPage';
 
 // Authenticated user pages
-export const AccountPage = createPlaceholderPage('AccountPage', 'Customer Portal');
-export const MyBookingsPage = createPlaceholderPage('MyBookingsPage', 'Customer Portal');
-export const WishlistPage = createPlaceholderPage('WishlistPage', 'Customer Portal');
-export const MessagesPage = createPlaceholderPage('MessagesPage', 'Customer Portal');
-export const BookingPaymentPage = createPlaceholderPage('BookingPaymentPage', 'Customer Portal');
-export const BookingConfirmationPage = createPlaceholderPage('BookingConfirmationPage', 'Customer Portal');
+export { AccountPage } from './AccountPage';
+export { MyBookingsPage } from './MyBookingsPage';
+export { WishlistPage } from './WishlistPage';
+export { MessagesPage } from './MessagesPage';
+export { BookingPaymentPage } from './BookingPaymentPage';
+export { BookingConfirmationPage } from './BookingConfirmationPage';
+

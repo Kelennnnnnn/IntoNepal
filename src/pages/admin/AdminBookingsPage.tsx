@@ -15,6 +15,7 @@ import {
   CheckCircle2,
   X,
   FileSpreadsheet,
+  AlertTriangle,
 } from 'lucide-react';
 import { AdminLayout } from '../../components/layout/AdminLayout';
 import { fetchAdminBookings, updateBookingStatus } from '../../lib/adminData';
@@ -24,6 +25,7 @@ import { toast } from 'sonner';
 export const AdminBookingsPage: React.FC = () => {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'confirmed' | 'completed' | 'cancelled' | 'pending'>('all');
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
@@ -31,10 +33,12 @@ export const AdminBookingsPage: React.FC = () => {
 
   const loadData = async () => {
     setLoading(true);
+    setErrorMessage(null);
     try {
       const data = await fetchAdminBookings();
       setBookings(data);
     } catch (err: any) {
+      setErrorMessage(err.message || 'Failed to load bookings');
       toast.error('Failed to load bookings: ' + err.message);
     } finally {
       setLoading(false);
@@ -64,10 +68,10 @@ export const AdminBookingsPage: React.FC = () => {
     const q = searchQuery.toLowerCase().trim();
     const matchesSearch =
       !q ||
-      b.id.toLowerCase().includes(q) ||
-      b.traveler_name.toLowerCase().includes(q) ||
-      b.traveler_email.toLowerCase().includes(q) ||
-      b.listing_id.toLowerCase().includes(q);
+      (b.id || '').toLowerCase().includes(q) ||
+      (b.traveler_name || '').toLowerCase().includes(q) ||
+      (b.traveler_email || '').toLowerCase().includes(q) ||
+      (b.listing_id || '').toLowerCase().includes(q);
     return matchesStatus && matchesSearch;
   });
 
@@ -83,13 +87,27 @@ export const AdminBookingsPage: React.FC = () => {
       actions={
         <button
           onClick={loadData}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-md border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 shadow-2xs transition-colors"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-md border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 shadow-2xs transition-colors cursor-pointer"
         >
           <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
           Refresh
         </button>
       }
     >
+      {errorMessage && (
+        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl flex items-center justify-between text-xs text-red-800">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 text-red-600 shrink-0" />
+            <span>{errorMessage}</span>
+          </div>
+          <button
+            onClick={loadData}
+            className="px-3 py-1 bg-red-600 text-white rounded font-semibold hover:bg-red-700 transition-colors"
+          >
+            Retry
+          </button>
+        </div>
+      )}
       {/* FINANCIAL SUMMARY STRIP */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
         <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-2xs">
@@ -257,7 +275,7 @@ export const AdminBookingsPage: React.FC = () => {
 
       {/* DETAIL DRAWER / OVERRIDE MODAL */}
       {selectedBooking && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60">
           <div className="bg-white rounded-xl max-w-xl w-full border border-slate-200 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
             <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
               <div>

@@ -19,6 +19,7 @@ import {
   Loader2,
   X,
   Check,
+  AlertTriangle,
 } from 'lucide-react';
 import { AdminLayout } from '../../components/layout/AdminLayout';
 import { fetchAdminAgencies, approveAgency, rejectAgency } from '../../lib/adminData';
@@ -28,6 +29,7 @@ import { toast } from 'sonner';
 export const AdminAgenciesPage: React.FC = () => {
   const [agencies, setAgencies] = useState<Agency[]>([]);
   const [loading, setLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'verified' | 'rejected'>('pending');
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -43,10 +45,12 @@ export const AdminAgenciesPage: React.FC = () => {
 
   const loadData = async () => {
     setLoading(true);
+    setErrorMessage(null);
     try {
       const data = await fetchAdminAgencies();
       setAgencies(data);
     } catch (err: any) {
+      setErrorMessage(err.message || 'Failed to load agency records');
       toast.error('Failed to load agency records: ' + err.message);
     } finally {
       setLoading(false);
@@ -118,11 +122,11 @@ export const AdminAgenciesPage: React.FC = () => {
     const q = searchQuery.toLowerCase().trim();
     const matchesSearch =
       !q ||
-      a.company_name.toLowerCase().includes(q) ||
-      a.city.toLowerCase().includes(q) ||
-      a.registration_number.toLowerCase().includes(q) ||
-      a.contact_person.toLowerCase().includes(q) ||
-      a.email.toLowerCase().includes(q);
+      (a.company_name || '').toLowerCase().includes(q) ||
+      (a.city || '').toLowerCase().includes(q) ||
+      (a.registration_number || '').toLowerCase().includes(q) ||
+      (a.contact_person || '').toLowerCase().includes(q) ||
+      (a.email || '').toLowerCase().includes(q);
     return matchesStatus && matchesSearch;
   });
 
@@ -135,13 +139,27 @@ export const AdminAgenciesPage: React.FC = () => {
       actions={
         <button
           onClick={loadData}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-md border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 transition-colors shadow-2xs"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-md border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 transition-colors shadow-2xs cursor-pointer"
         >
           <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
           Refresh
         </button>
       }
     >
+      {errorMessage && (
+        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl flex items-center justify-between text-xs text-red-800">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 text-red-600 shrink-0" />
+            <span>{errorMessage}</span>
+          </div>
+          <button
+            onClick={loadData}
+            className="px-3 py-1 bg-red-600 text-white rounded font-semibold hover:bg-red-700 transition-colors"
+          >
+            Retry
+          </button>
+        </div>
+      )}
       {/* FILTER CONTROLS & SEARCH */}
       <div className="bg-white rounded-xl border border-slate-200 p-4 mb-6 shadow-2xs space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -367,7 +385,7 @@ export const AdminAgenciesPage: React.FC = () => {
 
       {/* DETAIL MODAL / VERIFICATION DRAWER */}
       {selectedAgency && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60">
           <div className="bg-white rounded-xl max-w-2xl w-full border border-slate-200 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
             <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
               <div className="flex items-center gap-2.5">
@@ -548,7 +566,7 @@ export const AdminAgenciesPage: React.FC = () => {
 
       {/* DOCUMENT PREVIEW MODAL */}
       {activeDocUrl && (
-        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm">
+        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/80">
           <div className="bg-white rounded-xl max-w-3xl w-full border border-slate-300 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
             <div className="px-5 py-3 border-b border-slate-200 flex items-center justify-between bg-slate-900 text-white">
               <span className="text-xs font-bold uppercase tracking-wider text-amber-400">
@@ -590,7 +608,7 @@ export const AdminAgenciesPage: React.FC = () => {
 
       {/* REJECTION REASON MODAL */}
       {rejectingAgency && (
-        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/60">
           <div className="bg-white rounded-xl max-w-md w-full border border-slate-200 shadow-2xl p-6">
             <h3 className="text-sm font-bold text-slate-900 mb-1">
               Reject Agency Application

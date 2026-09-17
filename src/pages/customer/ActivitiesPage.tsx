@@ -24,6 +24,8 @@ import { LoadingSkeleton, EmptyState, ErrorState } from '@/components/ui/States'
 import { supabase } from '@/lib/supabaseClient';
 import { getOptimizedImageUrl } from '@/lib/images';
 import type { Listing, Agency } from '@/lib/types';
+import { ALL_OTA_LISTINGS } from '@/data/otaMarketplaceData';
+import { useCurrencyStore } from '@/stores/currencyStore';
 
 const PAGE_SIZE = 9;
 
@@ -31,12 +33,15 @@ const PAGE_SIZE = 9;
 const CATEGORIES = [
   { value: 'all', label: 'All Categories' },
   { value: 'trekking', label: 'Trekking' },
-  { value: 'climbing', label: 'Peak Climbing' },
-  { value: 'tour', label: 'Cultural Tours' },
+  { value: 'mountaineering', label: 'Mountaineering & Peak Climbing' },
+  { value: 'climbing', label: 'Alpine Climbing' },
+  { value: 'rafting', label: 'Whitewater Rafting' },
+  { value: 'wildlife', label: 'Wildlife & Jungle Safari' },
   { value: 'safari', label: 'Jungle Safari' },
-  { value: 'cultural', label: 'Heritage Walks' },
-  { value: 'adventure', label: 'Alpine Adventure' },
-  { value: 'wellness', label: 'Yoga & Wellness' },
+  { value: 'tour', label: 'Cultural Tours' },
+  { value: 'cultural', label: 'Heritage & Monasteries' },
+  { value: 'adventure', label: 'Adventure & Paragliding' },
+  { value: 'wellness', label: 'Yoga & Meditation' },
 ];
 
 const LOCATIONS = [
@@ -83,6 +88,7 @@ interface FetchListingsResult {
 export const ActivitiesPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
+  const { formatPrice } = useCurrencyStore();
 
   // Read URL parameters
   const searchQuery = searchParams.get('search') || '';
@@ -248,17 +254,80 @@ export const ActivitiesPage: React.FC = () => {
 
       const { data: listingsData, count, error: queryError } = await query;
 
-      if (queryError) {
-        throw new Error(queryError.message);
+      // Fallback to rich comprehensive OTA catalog if database has 0 items or query fails
+      if (queryError || !listingsData || listingsData.length === 0) {
+        let local = [...ALL_OTA_LISTINGS];
+        if (searchQuery.trim()) {
+          const q = searchQuery.toLowerCase();
+          local = local.filter((item) =>
+            item.title.toLowerCase().includes(q) ||
+            item.location.toLowerCase().includes(q) ||
+            item.category.toLowerCase().includes(q)
+          );
+        }
+        if (selectedCategory && selectedCategory !== 'all') {
+          const cat = selectedCategory.toLowerCase();
+          local = local.filter((item) => item.category.toLowerCase().includes(cat));
+        }
+        if (selectedLocation) {
+          const loc = selectedLocation.toLowerCase();
+          local = local.filter((item) =>
+            item.location.toLowerCase().includes(loc) ||
+            item.region.toLowerCase().includes(loc)
+          );
+        }
+        if (selectedDifficulty) {
+          const diff = selectedDifficulty.toLowerCase();
+          local = local.filter((item) => item.difficulty.toLowerCase() === diff);
+        }
+        if (minPrice !== undefined) local = local.filter((item) => item.price >= minPrice);
+        if (maxPrice !== undefined) local = local.filter((item) => item.price <= maxPrice);
+        if (minDuration !== undefined) local = local.filter((item) => item.durationDays >= minDuration);
+        if (maxDuration !== undefined) local = local.filter((item) => item.durationDays <= maxDuration);
+
+        // Sort
+        if (sortBy === 'price_asc') local.sort((a, b) => a.price - b.price);
+        else if (sortBy === 'price_desc') local.sort((a, b) => b.price - a.price);
+        else if (sortBy === 'rating_desc') local.sort((a, b) => b.rating - a.rating);
+        else if (sortBy === 'duration_asc') local.sort((a, b) => a.durationDays - b.durationDays);
+        else if (sortBy === 'duration_desc') local.sort((a, b) => b.durationDays - a.durationDays);
+
+        const totalCount = local.length;
+        const from = (page - 1) * PAGE_SIZE;
+        const paginated = local.slice(from, from + PAGE_SIZE);
+
+        const fallbackListings = paginated.map((item) => ({
+          id: item.id,
+          title: item.title,
+          category: item.category,
+          location: item.location,
+          price: item.price,
+          duration: item.duration,
+          duration_days: item.durationDays,
+          difficulty: item.difficulty,
+          images: [item.image, ...(item.gallery || [])],
+          rating: item.rating,
+          review_count: item.reviewCount,
+          featured: true,
+          status: 'published' as const,
+          agency_id: item.agencyLicense,
+          agency: {
+            id: item.agencyLicense,
+            user_id: item.agencyLicense,
+            company_name: item.agencyName,
+            city: item.location,
+            rating: item.rating,
+            review_count: item.reviewCount,
+            status: 'approved' as const,
+            logo_url: undefined,
+          } as any,
+        }));
+
+        return { listings: fallbackListings, totalCount };
       }
 
       const listings = (listingsData as any[]) || [];
       const totalCount = count ?? 0;
-
-      // 10. Fetch Agencies in batch for the retrieved listings
-      if (listings.length === 0) {
-        return { listings: [], totalCount: 0 };
-      }
 
       const agencyIds = Array.from(
         new Set(listings.map((l) => l.agency_id).filter(Boolean))
@@ -302,21 +371,21 @@ export const ActivitiesPage: React.FC = () => {
                   Home
                 </Link>
                 <span>/</span>
-                <span className="text-[#1A1F1D] font-semibold">Trekking & Expeditions</span>
+                <span className="text-[#1A1F1D] font-semibold">Experiences & Tours</span>
               </div>
               <h1 className="font-serif text-2xl sm:text-3xl font-extrabold text-[#1A1F1D] tracking-tight">
-                Himalayan Treks & Expeditions
+                Nepal Adventures & Activities
               </h1>
               <p className="text-xs sm:text-sm text-[#5F6B66] mt-1">
                 {isLoading ? (
-                  'Searching verified itineraries...'
+                  'Searching verified activities...'
                 ) : (
                   <>
                     Showing{' '}
                     <span className="font-bold text-[#1A1F1D]">
                       {data?.totalCount ?? 0}
                     </span>{' '}
-                    itineraries from licensed Nepali tour operators
+                    experiences from licensed Nepali operators
                   </>
                 )}
               </p>
@@ -330,7 +399,7 @@ export const ActivitiesPage: React.FC = () => {
                   type="text"
                   value={localSearch}
                   onChange={(e) => setLocalSearch(e.target.value)}
-                  placeholder="Search peak, valley, or trek..."
+                  placeholder="Search trek, safari, rafting, tour..."
                   className="w-full pl-9 pr-3 py-2 bg-[#FBF8F3] border border-[#E8E4DD] rounded-lg text-xs sm:text-sm text-[#1A1F1D] placeholder:text-[#9DA8A3] focus:outline-none focus:border-[#1E4B8F] transition-colors"
                 />
                 {localSearch && (
@@ -507,7 +576,7 @@ export const ActivitiesPage: React.FC = () => {
             <div className="flex items-center justify-between pb-3 border-b border-[#E8E4DD]">
               <div className="flex items-center gap-2">
                 <SlidersHorizontal className="w-4 h-4 text-[#D97706]" />
-                <h2 className="font-serif font-bold text-base text-[#1A1F1D]">Filter Itineraries</h2>
+                <h2 className="font-serif font-bold text-base text-[#1A1F1D]">Filter Activities</h2>
               </div>
               {activeFiltersCount > 0 && (
                 <button
@@ -757,7 +826,7 @@ export const ActivitiesPage: React.FC = () => {
                           </div>
 
                           {/* Duration */}
-                          <div className="absolute bottom-3 left-3 bg-[#1A1F1D]/80 backdrop-blur-sm px-2.5 py-1 rounded text-white text-[11px] font-semibold flex items-center gap-1.5">
+                          <div className="absolute bottom-3 left-3 bg-[#1A1F1D]/90 px-2.5 py-1 rounded text-white text-[11px] font-semibold flex items-center gap-1.5">
                             <Clock className="w-3 h-3 text-[#D97706]" />
                             <span>{listing.duration || `${listing.duration_days} Days`}</span>
                           </div>
@@ -790,7 +859,7 @@ export const ActivitiesPage: React.FC = () => {
                                 From
                               </span>
                               <span className="font-serif font-black text-base sm:text-lg text-[#1A1F1D]">
-                                ${Number(listing.price).toLocaleString()}
+                                {formatPrice(Number(listing.price))}
                               </span>
                             </div>
                           </div>
@@ -842,7 +911,7 @@ export const ActivitiesPage: React.FC = () => {
         <div className="fixed inset-0 z-50 flex lg:hidden">
           {/* Backdrop */}
           <div
-            className="fixed inset-0 bg-black/50 backdrop-blur-xs"
+            className="fixed inset-0 bg-black/60"
             onClick={() => setMobileFilterOpen(false)}
           />
 
